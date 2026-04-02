@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            display: flex;
+            background-image: linear-gradient(45deg, #F2DF80 40%, #F2BB9B);
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: "Montserrat", sans-serif;
+        }
+
+        .wrapper {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            background-color: #fff;
+            padding: 2.5rem;
+            min-height: 50vh;
+            width: 25rem;
+            border-radius: 2rem;
+            box-shadow: .2rem .3rem .5rem rgba(0, 0, 0, 0.2);
+        }
+
+        .title {
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            margin: 1rem 0;
+        }
+
+        .addTaskForm {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: .5rem;
+            width: 100%;
+        }
+
+        .addTaskInput {
+            font-family: "Montserrat", sans-serif;
+            padding: .5rem .7rem;
+            width: 100%;
+            font-size: 1rem;
+        }
+
+        .addTaskBtn {
+            cursor: pointer;
+            font-size: 2rem;
+            padding: .1rem;
+            background: none;
+            border: none;
+            color: #F2BB9B;
+            margin-left: 1rem;
+        }
+
+        .addTaskBtn:hover {
+            color: #e05a5a;
+            transition: color 0.2s ease;
+        }
+
+        .taskStatus {
+            font-family: "Montserrat", sans-serif;
+            padding: .5rem .7rem;
+            border: 2px solid #F2BB9B;
+            width: 100%;
+
+        }
+
+        .taskList {
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .doneTask {
+            text-decoration: line-through;
+            color: #757575;
+            font-style: italic;
+        }
+
+        .taskWrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: .4rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .taskWrapper span {
+            flex: 1;
+            margin: 0 .7rem;
+        }
+
+
+
+        .deleteBtn:hover {
+            color: #e05a5a;
+            transition: color 0.2s ease;
+        }
+
+        .deleteBtn {
+            cursor: pointer;
+            padding: .2rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #F2BB9B;
+
+        }
+
+
+        input[type="checkbox"] {
+            accent-color: #F2BB9B;
+            width: .8rem;
+            height: .8rem;
+            cursor: pointer;
+        }
+
+        .emptyMessage {
+            text-align: center;
+            color: #757575;
+            margin-top: 1rem;
+            font-size: .9rem;
+        }
+
+        .errorMessage {
+            color: #e05a5a;
+            font-size: .8rem;
+            margin-bottom: .5rem;
+            min-height: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <h1 class="title">To-Do List</h1>
+        <h3 class="subtitle">Add new task</h3>
+        <form class="addTaskForm">
+            <input class="addTaskInput" type="text" placeholder="Enter new task">
+            <button class="addTaskBtn" type="submit">+</button>
+        </form>
+        <p class="errorMessage"></p>
+        <select class="taskStatus">
+            <option value="all">all</option>
+            <option value="completed">completed</option>
+            <option value="active">active</option>
+        </select>
+        <div class="taskList"></div>
+    </div>
+    <script>
+
+        const addTaskForm = document.querySelector(".addTaskForm")
+        const addTaskInput = document.querySelector(".addTaskInput")
+        const taskList = document.querySelector(".taskList")
+        const taskStatus = document.querySelector(".taskStatus");
+        const errorMessage = document.querySelector(".errorMessage")
+
+        const state = {
+            tasks: [],
+            filter: "all"
+        }
+
+
+        const saveToLocalStorage = () => {
+            localStorage.setItem("tasks", JSON.stringify(state.tasks));
+        };
+
+        const loadFromLocalStorage = () => {
+            const data = localStorage.getItem("tasks");
+            state.tasks = data ? JSON.parse(data) : [];
+        };
+
+        const createTaskElement = (task) => {
+            const newTask = document.createElement("div");
+            newTask.classList.add("taskWrapper");
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = task.done;
+            checkbox.addEventListener("change", () => {
+                toggleTask(task.id);
+            })
+
+            const text = document.createElement("span");
+            text.textContent = task.text;
+            if (task.done) {
+                text.classList.add("doneTask")
+            }
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.classList.add("deleteBtn");
+
+            const deleteIcon = document.createElement("i");
+            deleteIcon.classList.add("bi", "bi-trash-fill");
+
+            deleteBtn.appendChild(deleteIcon);
+            deleteBtn.addEventListener("click", () => removeTask(task.id));
+
+            newTask.append(checkbox, text, deleteBtn);
+
+            return newTask;
+        }
+
+        const render = () => {
+            taskList.innerHTML = "";
+
+            const tasks = getFilteredTasks();
+
+            if (tasks.length === 0) {
+                const empty = document.createElement("p");
+                empty.classList.add("emptyMessage");
+                empty.textContent = "No tasks found";
+                taskList.appendChild(empty);
+                return;
+            }
+
+            tasks.forEach(task => {
+                taskList.appendChild(createTaskElement(task));
+            })
+        }
+
+        const addTask = (text) => {
+            if (!text.trim()) {
+                errorMessage.textContent = "Task can't be empty";
+                return;
+            }
+
+            errorMessage.textContent = "";
+
+            state.tasks.push({
+                id: crypto.randomUUID(),
+                text: text.trim(),
+                done: false
+            })
+            saveToLocalStorage();
+            render();
+            addTaskInput.focus();
+        }
+
+        const toggleTask = (id) => {
+            const task = state.tasks.find(task => task.id === id);
+            if (!task) return;
+
+            task.done = !task.done;
+            saveToLocalStorage();
+            render();
+        };
+
+
+        const getFilteredTasks = () => {
+            if (state.filter === "completed") {
+                return state.tasks.filter(task => task.done);
+            }
+
+            if (state.filter === "active") {
+                return state.tasks.filter(task => !task.done);
+            }
+
+            return state.tasks;
+        };
+
+        const removeTask = (id) => {
+            state.tasks = state.tasks.filter(task => task.id !== id);
+            saveToLocalStorage();
+            render();
+        }
+
+        taskStatus.addEventListener("change", (e) => {
+            state.filter = e.target.value;
+            render();
+        });
+
+        addTaskForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            addTask(addTaskInput.value)
+            addTaskInput.value = "";
+
+        })
+
+        loadFromLocalStorage();
+        render();
+    </script>
+</body>
+
+</html>
